@@ -17,7 +17,7 @@ func RegisterRoutes(r *gin.Engine) {
 		protected := v1.Group("/")
 		protected.Use(middlewares.AuthMiddleware())
 		{
-			protected.POST("/products", handlers.CreateProduct)
+			protected.POST("/products", middlewares.AdminOnly(), handlers.CreateProduct)
 		}
 	}
 }

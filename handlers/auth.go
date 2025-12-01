@@ -18,6 +18,7 @@ import (
 type RegisterInput struct {
 	Email    string `json:"email" binding:"required"`
 	Password string `json:"password" binding:"required"`
+	Role     string `json:"role"`
 }
 
 func Register(c *gin.Context) {
@@ -28,9 +29,15 @@ func Register(c *gin.Context) {
 		return
 	}
 
+	role := input.Role
+	if role == "" {
+		role = "user"
+	}
+
 	user := models.User{
 		Email:    input.Email,
 		Password: input.Password,
+		Role:     role,
 	}
 
 	if err := database.DB.Create(&user).Error; err != nil {
@@ -83,8 +90,9 @@ func Login(c *gin.Context) {
 	}
 
 	claims := jwt.MapClaims{
-		"sub": user.ID,
-		"exp": time.Now().Add(time.Hour * 24).Unix(),
+		"sub":  user.ID,
+		"role": user.Role,
+		"exp":  time.Now().Add(time.Hour * 24).Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

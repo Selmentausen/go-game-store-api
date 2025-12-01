@@ -9,6 +9,7 @@ type User struct {
 	gorm.Model
 	Email    string `json:"email" gorm:"unique"`
 	Password string `json:"password"`
+	Role     string `json: "role" gorm:"default:'user'"`
 }
 
 func (u *User) BeforeSave(tx *gorm.DB) (err error) {
