@@ -41,8 +41,12 @@ func AuthMiddleware() gin.HandlerFunc {
 		}
 
 		if claims, ok := token.Claims.(jwt.MapClaims); ok {
-			if userID, ok := claims["sub"].(float64); ok {
-				c.Set("userID", uint(userID))
+			if sub, ok := claims["sub"].(float64); ok {
+				c.Set("UserID", uint(sub))
+			} else {
+				fmt.Printf("Error: 'sub' claim is not a float64. It is: %T %v\n", claims["sub"], claims["sub"])
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
+				return
 			}
 			if role, ok := claims["role"].(string); ok {
 				c.Set("userRole", role)

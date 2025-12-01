@@ -18,7 +18,6 @@ import (
 type RegisterInput struct {
 	Email    string `json:"email" binding:"required"`
 	Password string `json:"password" binding:"required"`
-	Role     string `json:"role"`
 }
 
 func Register(c *gin.Context) {
@@ -29,15 +28,10 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	role := input.Role
-	if role == "" {
-		role = "user"
-	}
-
 	user := models.User{
 		Email:    input.Email,
 		Password: input.Password,
-		Role:     role,
+		Role:     "user",
 	}
 
 	if err := database.DB.Create(&user).Error; err != nil {

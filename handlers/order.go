@@ -20,7 +20,18 @@ func CreateOrder(c *gin.Context) {
 		return
 	}
 
-	userID, _ := c.Get("UserID")
+	rawUserID, exists := c.Get("UserID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: User ID not found"})
+		return
+	}
+
+	userID, ok := rawUserID.(uint)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "User ID format error"})
+		return
+	}
+
 	tx := database.DB.Begin()
 
 	// check Product existende and lock the row (preven race conditions)
@@ -38,7 +49,7 @@ func CreateOrder(c *gin.Context) {
 	}
 
 	order := models.Order{
-		UserID:    userID.(uint),
+		UserID:    userID,
 		ProductID: input.ProductID,
 	}
 	if err := tx.Create(&order).Error; err != nil {

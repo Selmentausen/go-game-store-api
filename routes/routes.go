@@ -8,6 +8,10 @@ import (
 )
 
 func RegisterRoutes(r *gin.Engine) {
+	r.GET("/", func(c *gin.Context) {
+		c.File("./static/index.html")
+	})
+
 	v1 := r.Group("/api/v1")
 	{
 		v1.POST("/auth/register", handlers.Register)
@@ -18,6 +22,7 @@ func RegisterRoutes(r *gin.Engine) {
 		protected.Use(middlewares.AuthMiddleware())
 		{
 			protected.POST("/products", middlewares.AdminOnly(), handlers.CreateProduct)
+			protected.POST("/orders", handlers.CreateOrder)
 		}
 	}
 }

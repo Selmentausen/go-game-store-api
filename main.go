@@ -26,11 +26,12 @@ func main() {
 
 	database.ConnectDatabase()
 	database.ConnectRedis()
-	database.DB.AutoMigrate(&models.Product{}, &models.User{})
+	database.DB.AutoMigrate(&models.Product{}, &models.User{}, &models.Order{})
 
 	go worker.StartEmailWorker()
 
 	r := gin.Default()
+	r.Static("/static", "./static")
 	routes.RegisterRoutes(r)
 
 	srv := &http.Server{
