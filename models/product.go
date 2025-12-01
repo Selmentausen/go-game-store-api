@@ -10,4 +10,5 @@ type Product struct {
 	Description string `json:"description"`
 	Price       int    `json:"price"`
 	SKU         string `json:"sku" gorm:"unique"`
+	Stock       int    `json:"stock"`
 }
