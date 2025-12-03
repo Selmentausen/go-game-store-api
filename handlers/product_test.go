@@ -22,9 +22,12 @@ func TestCreateProduct(t *testing.T) {
 		Price: 1000,
 		SKU:   "TEST-001",
 	}
+
+	adminToken := GenerateTestToken(1, "admin")
 	jsonValue, _ := json.Marshal(product)
 
 	req, _ := http.NewRequest("POST", "/api/v1/products", bytes.NewBuffer(jsonValue))
+	req.Header.Set("Authorization", "Bearer "+adminToken)
 	w := httptest.NewRecorder()
 
 	r.ServeHTTP(w, req)

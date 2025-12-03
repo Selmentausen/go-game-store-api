@@ -48,11 +48,15 @@ func Register(c *gin.Context) {
 
 	jsonBody, _ := json.Marshal(taskPayload)
 
-	ctx := context.Background()
-	err := database.RedisClient.RPush(ctx, "send_email_queue", jsonBody).Err()
+	if database.RedisClient != nil {
+		ctx := context.Background()
+		err := database.RedisClient.RPush(ctx, "send_email_queue", jsonBody).Err()
 
-	if err != nil {
-		fmt.Println("Failed to queue email task:", err)
+		if err != nil {
+			fmt.Println("Failed to queue email task:", err)
+		}
+	} else {
+		fmt.Println("Redis is not connected. Skipping email task.")
 	}
 
 	c.JSON(http.StatusCreated, gin.H{"message": "Registration successful"})

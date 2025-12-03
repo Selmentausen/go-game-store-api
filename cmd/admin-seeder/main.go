@@ -36,5 +36,5 @@ func main() {
 	}
 
 	fmt.Println("Admin created successfully!")
-	fmt.Println("Email: %s\nPassword: %s\n", adminEmail, adminPassword)
+	fmt.Printf("Email: %s\nPassword: %s\n", adminEmail, adminPassword)
 }
