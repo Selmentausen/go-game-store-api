@@ -39,7 +39,8 @@ func main() {
 		Handler: r,
 	}
 
-	// Graceful Shutdown
+	// Run Server in a separate Goroutine so it doesn't block the main thread.
+	// This allows the main thread to listen for termination signals.
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("listen: %s\n", err)
@@ -53,6 +54,8 @@ func main() {
 	<-quit
 	fmt.Println("\nShutting down server...")
 
+	// When a kill signal is received, we give the server 5 seconds to finish
+	// processing currently active requests before forcibly closing.
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 

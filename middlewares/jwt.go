@@ -10,6 +10,8 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+// AuthMiddleware verifies the JWT token sent in the Authorization header.
+// It extracts the UserID and Role and injects them into the Gin Context.
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Get token from header
@@ -19,7 +21,7 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// split bearer and the token
+		// Split bearer and the token
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || parts[0] != "Bearer" {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid header format"})
@@ -27,7 +29,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		}
 		tokenString := parts[1]
 
-		// parse and validate the token
+		// Parse and validate the token
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpectred signing method: %v", token.Header["alg"])
@@ -40,6 +42,7 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		// Extract Claims to Context
 		if claims, ok := token.Claims.(jwt.MapClaims); ok {
 			if sub, ok := claims["sub"].(float64); ok {
 				c.Set("UserID", uint(sub))

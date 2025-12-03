@@ -39,7 +39,9 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	// Send an email through redis
+	// --- ASYNC JOB QUEUE ---
+	// Instead of sending email immediately (blocking the user),
+	// we push the task to Redis to be processed by a background worker.
 	taskPayload := map[string]string{
 		"email":   user.Email,
 		"user_id": fmt.Sprintf("%d", user.ID),
@@ -48,6 +50,7 @@ func Register(c *gin.Context) {
 
 	jsonBody, _ := json.Marshal(taskPayload)
 
+	// Check if Redis is connected (e.g., during tests, it might be nil)
 	if database.RedisClient != nil {
 		ctx := context.Background()
 		err := database.RedisClient.RPush(ctx, "send_email_queue", jsonBody).Err()
