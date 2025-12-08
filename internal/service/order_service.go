@@ -50,6 +50,12 @@ func (s *OrderService) Checkout(userID uint) (*models.Order, error) {
 			tx.Rollback()
 			return nil, errors.New("not enough stock for: " + item.Product.Name)
 		}
+		product.Stock -= item.Quantity
+
+		if err := s.productRepo.UpdateProduct(tx, product); err != nil {
+			tx.Rollback()
+			return nil, errors.New("product update failed: " + item.Product.Name)
+		}
 
 		totalCents += product.Price * item.Quantity
 		orderItems = append(orderItems, models.OrderItem{

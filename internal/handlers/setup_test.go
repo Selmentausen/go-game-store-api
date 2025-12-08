@@ -19,6 +19,7 @@ type TestDeps struct {
 	AuthHandler    *AuthHandler
 	ProductHandler *ProductHandler
 	OrderHandler   *OrderHandler
+	CartHandler    *CartHandler
 }
 
 func SetupTestDependencies() TestDeps {
@@ -28,20 +29,23 @@ func SetupTestDependencies() TestDeps {
 	if err != nil {
 		panic("Failed to migrate test database: " + err.Error())
 	}
-	db.AutoMigrate(&models.Product{}, &models.User{}, &models.Order{})
+	db.AutoMigrate(&models.Product{}, &models.User{}, &models.Order{}, &models.CartItem{}, &models.OrderItem{})
 
 	userRepo := repository.NewUserRepository(db)
 	productRepo := repository.NewProductRepository(db)
 	orderRepo := repository.NewOrderRepository(db)
+	cartRepo := repository.NewCartRepository(db)
 
 	authService := service.NewAuthService(userRepo, nil)
 	productService := service.NewProductService(productRepo)
-	orderService := service.NewOrderService(orderRepo, productRepo, db)
+	cartService := service.NewCartService(cartRepo, productRepo)
+	orderService := service.NewOrderService(orderRepo, productRepo, cartRepo, db)
 
 	return TestDeps{
 		DB:             db,
 		AuthHandler:    NewAuthHandler(authService),
 		ProductHandler: NewProductHandler(productService),
+		CartHandler:    NewCartHandler(cartService),
 		OrderHandler:   NewOrderHandler(orderService),
 	}
 }
@@ -58,7 +62,10 @@ func SetupRouter(deps TestDeps) *gin.Engine {
 		protected.Use(middleware.AuthMiddleware())
 		{
 			protected.POST("/products", middleware.AdminOnly(), deps.ProductHandler.CreateProduct)
-			protected.POST("/orders", deps.OrderHandler.CreateOrder)
+
+			protected.GET("/cart", deps.CartHandler.GetCart)
+			protected.POST("/cart", deps.CartHandler.AddToCart)
+			protected.POST("/cart/checkout", deps.OrderHandler.Checkout)
 		}
 	}
 	return r

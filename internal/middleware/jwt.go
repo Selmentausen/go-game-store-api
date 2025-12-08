@@ -45,7 +45,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		// Extract Claims to Context
 		if claims, ok := token.Claims.(jwt.MapClaims); ok {
 			if sub, ok := claims["sub"].(float64); ok {
-				c.Set("UserID", uint(sub))
+				c.Set("userID", uint(sub))
 			} else {
 				fmt.Printf("Error: 'sub' claim is not a float64. It is: %T %v\n", claims["sub"], claims["sub"])
 				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
@@ -54,6 +54,9 @@ func AuthMiddleware() gin.HandlerFunc {
 			if role, ok := claims["role"].(string); ok {
 				c.Set("userRole", role)
 			}
+		} else {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims structure"})
+			return
 		}
 		c.Next()
 	}
