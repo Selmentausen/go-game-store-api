@@ -1,0 +1,12 @@
+.game-gradient {
+    background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+}
+
+.card-hover:hover {
+    transform: translateY(-5px);
+    transition: all 0.3s ease;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}

@@ -51,7 +51,10 @@ func main() {
 	slog.Info("Database connected successfully")
 
 	// Run migrations
-	db.AutoMigrate(&models.User{}, &models.Product{}, &models.Order{})
+	err = db.AutoMigrate(&models.User{}, &models.Product{}, &models.Order{}, &models.OrderItem{}, &models.CartItem{})
+	if err != nil {
+		slog.Error("Failed to migrate database", "error", err)
+	}
 
 	// Connect to Redis
 	redisClient := redis.NewClient(&redis.Options{
@@ -76,13 +79,16 @@ func main() {
 	userRepo := repository.NewUserRepository(db)
 	productRepo := repository.NewProductRepository(db)
 	orderRepo := repository.NewOrderRepository(db)
+	cartRepo := repository.NewCartRepository(db)
 
 	authService := service.NewAuthService(userRepo, redisClient)
 	productService := service.NewProductService(productRepo)
-	orderService := service.NewOrderService(orderRepo, productRepo, db)
+	cartService := service.NewCartService(cartRepo, productRepo)
+	orderService := service.NewOrderService(orderRepo, productRepo, cartRepo, db)
 
 	authHandler := handlers.NewAuthHandler(authService)
 	productHandler := handlers.NewProductHandler(productService)
+	cartHandler := handlers.NewCartHandler(cartService)
 	orderHandler := handlers.NewOrderHandler(orderService)
 
 	// Setup router
@@ -103,7 +109,11 @@ func main() {
 		protected.Use(middleware.AuthMiddleware())
 		{
 			protected.POST("/products", middleware.AdminOnly(), productHandler.CreateProduct)
-			protected.POST("/orders", orderHandler.CreateOrder)
+
+			protected.GET("/cart", cartHandler.GetCart)
+			protected.POST("/cart", cartHandler.AddToCart)
+
+			protected.POST("/cart/checkout", orderHandler.Checkout)
 		}
 	}
 
@@ -133,5 +143,4 @@ func main() {
 		slog.Error("Server forced to shutdown", "error", err)
 	}
 	slog.Info("Server exited properly")
-
 }
