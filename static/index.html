@@ -4,71 +4,127 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gopher Game Store</title>
-    <!-- Tailwind CSS (via CDN for instant styling) -->
+
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Custom CSS -->
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body class="bg-gray-900 text-white font-sans antialiased min-h-screen flex flex-col">
 
-    <!-- Navbar -->
-    <nav class="bg-gray-800 border-b border-gray-700">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
-                <div class="flex items-center">
-                    <span class="text-2xl font-bold text-blue-500">🎮 GopherGames</span>
+<!-- Navbar -->
+<nav class="bg-gray-800 border-b border-gray-700 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16">
+            <!-- Logo -->
+            <div class="flex items-center gap-2 cursor-pointer" onclick="window.location.reload()">
+                <span class="text-3xl">👾</span>
+                <span class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500">GopherGames</span>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <!-- Guest View (Visible when not logged in) -->
+                <div id="guest-nav" class="flex gap-2">
+                    <input type="email" id="login-email" placeholder="Email" class="bg-gray-700 text-white px-3 py-1 rounded text-sm outline-none border border-gray-600 focus:border-blue-500 placeholder-gray-400">
+                    <input type="password" id="login-pass" placeholder="Password" class="bg-gray-700 text-white px-3 py-1 rounded text-sm outline-none border border-gray-600 focus:border-blue-500 placeholder-gray-400">
+                    <button onclick="window.login()" class="bg-blue-600 hover:bg-blue-500 px-4 py-1 rounded text-sm font-bold transition duration-200">Login</button>
+                    <button onclick="window.register()" class="bg-green-600 hover:bg-green-500 px-4 py-1 rounded text-sm font-bold transition duration-200">Sign Up</button>
                 </div>
-                <div class="flex items-center gap-4">
-                    <!-- Guest View -->
-                    <div id="guest-nav" class="flex gap-2">
-                        <input type="email" id="login-email" placeholder="Email" class="bg-gray-700 text-white px-3 py-1 rounded text-sm outline-none focus:ring-2 focus:ring-blue-500">
-                        <input type="password" id="login-pass" placeholder="Password" class="bg-gray-700 text-white px-3 py-1 rounded text-sm outline-none focus:ring-2 focus:ring-blue-500">
-                        <button onclick="login()" class="bg-blue-600 hover:bg-blue-700 px-4 py-1 rounded text-sm font-bold transition">Login</button>
-                        <button onclick="register()" class="bg-green-600 hover:bg-green-700 px-4 py-1 rounded text-sm font-bold transition">Register</button>
-                    </div>
-                    
-                    <!-- Logged In View -->
-                    <div id="user-nav" class="hidden flex items-center gap-4">
-                        <span id="user-email-display" class="text-gray-300 text-sm"></span>
-                        <button onclick="toggleAdminPanel()" id="admin-btn" class="hidden bg-yellow-600 hover:bg-yellow-700 px-3 py-1 rounded text-sm font-bold">Admin Panel</button>
-                        <button onclick="logout()" class="text-gray-400 hover:text-white text-sm">Logout</button>
+
+                <!-- User View (Visible when logged in) -->
+                <div id="user-nav" class="hidden flex items-center gap-6">
+                    <!-- Admin Toggle Button -->
+                    <button onclick="window.toggleAdminPanel()" id="admin-btn" class="hidden text-yellow-500 hover:text-yellow-400 font-bold text-sm flex items-center gap-1 transition">
+                        <span>🛠 Admin</span>
+                    </button>
+
+                    <!-- Cart Button -->
+                    <button onclick="window.toggleCart()" class="relative group hover:scale-110 transition duration-200">
+                        <span class="text-2xl">🛒</span>
+                        <!-- Cart Badge -->
+                        <span id="cart-badge" class="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full hidden shadow-lg">0</span>
+                    </button>
+
+                    <!-- Profile & Logout -->
+                    <div class="flex items-center gap-3">
+                        <div class="text-right leading-tight hidden sm:block">
+                            <div id="user-email-display" class="text-xs text-gray-400"></div>
+                            <div class="text-sm font-bold text-blue-400">Member</div>
+                        </div>
+                        <button onclick="window.logout()" class="bg-gray-700 hover:bg-gray-600 text-sm px-3 py-1 rounded transition border border-gray-600">Logout</button>
                     </div>
                 </div>
             </div>
         </div>
-    </nav>
+    </div>
+</nav>
 
-    <!-- Admin Panel (Hidden by default) -->
-    <div id="admin-panel" class="hidden bg-gray-800 border-b border-gray-700 p-6 shadow-inner">
-        <div class="max-w-7xl mx-auto">
-            <h3 class="text-xl font-bold text-yellow-500 mb-4">🛠 Admin Dashboard: Add Product</h3>
-            <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
-                <input type="text" id="p-name" placeholder="Game Name" class="bg-gray-700 p-2 rounded text-white">
-                <input type="text" id="p-desc" placeholder="Description" class="bg-gray-700 p-2 rounded text-white">
-                <input type="number" id="p-price" placeholder="Price (in cents)" class="bg-gray-700 p-2 rounded text-white">
-                <input type="number" id="p-stock" placeholder="Stock Qty" class="bg-gray-700 p-2 rounded text-white">
-                <input type="text" id="p-sku" placeholder="SKU (Unique)" class="bg-gray-700 p-2 rounded text-white">
+<!-- Admin Panel (Hidden by default) -->
+<div id="admin-panel" class="hidden bg-gray-800 border-b border-gray-600 p-6 shadow-2xl animate-fade-in-down">
+    <div class="max-w-7xl mx-auto">
+        <h3 class="text-xl font-bold text-yellow-500 mb-4 border-b border-gray-700 pb-2">Inventory Management</h3>
+        <div class="grid grid-cols-1 md:grid-cols-6 gap-3">
+            <input type="text" id="p-name" placeholder="Game Name" class="bg-gray-700 p-2 rounded text-white text-sm col-span-1 border border-gray-600">
+            <input type="text" id="p-desc" placeholder="Description" class="bg-gray-700 p-2 rounded text-white text-sm col-span-2 border border-gray-600">
+            <input type="number" id="p-price" placeholder="Price (cents)" class="bg-gray-700 p-2 rounded text-white text-sm col-span-1 border border-gray-600">
+            <input type="number" id="p-stock" placeholder="Stock Qty" class="bg-gray-700 p-2 rounded text-white text-sm col-span-1 border border-gray-600">
+            <input type="text" id="p-sku" placeholder="SKU (Unique)" class="bg-gray-700 p-2 rounded text-white text-sm col-span-1 border border-gray-600">
+        </div>
+        <button onclick="window.addProduct()" class="mt-4 w-full bg-yellow-600 hover:bg-yellow-500 py-2 rounded font-bold transition shadow-lg text-white">Add Product to Store</button>
+    </div>
+</div>
+
+<!-- Hero Section -->
+<div class="game-gradient py-12 text-center shadow-2xl border-b border-gray-700">
+    <h1 class="text-5xl font-extrabold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-600">Level Up Your Library</h1>
+    <p class="text-gray-400 text-lg">The best prices on digital games. Instant delivery.</p>
+</div>
+
+<!-- Main Product Grid -->
+<main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+    <div id="product-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <!-- JavaScript will inject products here -->
+        <div class="col-span-full text-center py-20 text-gray-500 animate-pulse">Loading Inventory...</div>
+    </div>
+</main>
+
+<!-- Cart Modal Overlay -->
+<div id="cart-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden z-50 flex justify-end backdrop-blur-sm transition-opacity duration-300">
+    <!-- Cart Drawer -->
+    <div class="bg-gray-800 w-full max-w-md h-full shadow-2xl flex flex-col transform transition-transform duration-300 translate-x-full border-l border-gray-700" id="cart-panel">
+
+        <!-- Header -->
+        <div class="p-4 border-b border-gray-700 flex justify-between items-center bg-gray-900">
+            <h2 class="text-xl font-bold flex items-center gap-2 text-white">
+                <span>🛒</span> Your Cart
+            </h2>
+            <button onclick="window.toggleCart()" class="text-gray-400 hover:text-white text-3xl leading-none">&times;</button>
+        </div>
+
+        <!-- Items List -->
+        <div id="cart-items" class="flex-grow overflow-y-auto p-4 space-y-4 scrollbar-hide">
+            <!-- JS Injects Cart Items Here -->
+            <div class="text-center text-gray-500 mt-10">Your cart is empty.</div>
+        </div>
+
+        <!-- Footer / Checkout -->
+        <div class="p-6 bg-gray-900 border-t border-gray-700">
+            <div class="flex justify-between text-lg font-bold mb-4 text-white">
+                <span>Total:</span>
+                <span id="cart-total" class="text-green-400">$0.00</span>
             </div>
-            <button onclick="addProduct()" class="mt-4 w-full bg-yellow-600 hover:bg-yellow-700 py-2 rounded font-bold">Add New Game</button>
+            <button onclick="window.checkout()" id="checkout-btn" class="w-full bg-green-600 hover:bg-green-500 py-3 rounded-lg font-bold shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed text-white">
+                Checkout Securely
+            </button>
         </div>
     </div>
+</div>
 
-    <!-- Hero Section -->
-    <div class="game-gradient py-12 text-center border-b border-gray-700">
-        <h1 class="text-4xl md:text-5xl font-extrabold mb-2">Next Gen Gaming Store</h1>
-        <p class="text-gray-400">Built with Go, Gin, Redis & PostgreSQL</p>
-    </div>
+<!-- Toast Notification Container -->
+<div id="toast-container" class="fixed bottom-5 right-5 space-y-3 z-[60]"></div>
 
-    <!-- Product Grid -->
-    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
-        <div id="product-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            <!-- Products will be injected here via JS -->
-            <div class="text-center col-span-full text-gray-500 animate-pulse">Loading Inventory...</div>
-        </div>
-    </main>
-
-    <!-- Toast Notification Container -->
-    <div id="toast-container" class="fixed bottom-5 right-5 space-y-3 z-50"></div>
-
-    <script src="/static/js/app.js" defer></script>
+<!-- Load App Logic -->
+<script src="/static/js/app.js" defer></script>
 </body>
-</html>
+</html>/html>

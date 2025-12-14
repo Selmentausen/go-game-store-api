@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"log/slog"
 	"net/http"
 	"os"
@@ -10,9 +11,12 @@ import (
 	"syscall"
 	"time"
 
+	pb "game-store-api/internal/grpc/payment"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/redis/go-redis/v9"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
@@ -75,6 +79,15 @@ func main() {
 		go worker.StartEmailWorker(redisClient)
 	}
 
+	// Connect
+	paymentConn, err := grpc.NewClient("127.0.0.1:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatal("Failed to connect to payment service:", err)
+	}
+	defer paymentConn.Close()
+
+	paymentClient := pb.NewPaymentServiceClient(paymentConn)
+
 	// Dependency injection
 	userRepo := repository.NewUserRepository(db)
 	productRepo := repository.NewProductRepository(db)
@@ -84,7 +97,7 @@ func main() {
 	authService := service.NewAuthService(userRepo, redisClient)
 	productService := service.NewProductService(productRepo)
 	cartService := service.NewCartService(cartRepo, productRepo)
-	orderService := service.NewOrderService(orderRepo, productRepo, cartRepo, db)
+	orderService := service.NewOrderService(orderRepo, productRepo, cartRepo, paymentClient, db)
 
 	authHandler := handlers.NewAuthHandler(authService)
 	productHandler := handlers.NewProductHandler(productService)

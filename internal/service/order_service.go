@@ -1,26 +1,36 @@
 package service
 
 import (
+	"context"
 	"errors"
+	pb "game-store-api/internal/grpc/payment"
 	"game-store-api/internal/models"
 	"game-store-api/internal/repository"
+	"time"
 
 	"gorm.io/gorm"
 )
 
 type OrderService struct {
-	orderRepo   repository.OrderRepository
-	productRepo repository.ProductRepository
-	cartRepo    repository.CartRepository
-	db          *gorm.DB
+	orderRepo     repository.OrderRepository
+	productRepo   repository.ProductRepository
+	cartRepo      repository.CartRepository
+	paymentClient pb.PaymentServiceClient
+	db            *gorm.DB
 }
 
-func NewOrderService(orderRepo repository.OrderRepository, productRepo repository.ProductRepository, cartRepo repository.CartRepository, db *gorm.DB) *OrderService {
+func NewOrderService(
+	orderRepo repository.OrderRepository,
+	productRepo repository.ProductRepository,
+	cartRepo repository.CartRepository,
+	paymentClient pb.PaymentServiceClient,
+	db *gorm.DB) *OrderService {
 	return &OrderService{
-		orderRepo:   orderRepo,
-		productRepo: productRepo,
-		cartRepo:    cartRepo,
-		db:          db,
+		orderRepo:     orderRepo,
+		productRepo:   productRepo,
+		cartRepo:      cartRepo,
+		paymentClient: paymentClient,
+		db:            db,
 	}
 }
 
@@ -30,6 +40,31 @@ func (s *OrderService) Checkout(userID uint) (*models.Order, error) {
 		return nil, errors.New("cart is empty")
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// --- Make a payment request ---
+	totalCents := 0
+	for _, item := range cartItems {
+		totalCents += item.Quantity * item.Product.Price
+	}
+
+	paymentReq := &pb.PaymentRequest{
+		OrderId:        int64(userID),
+		Amount:         float32(totalCents) / 100.0,
+		Currency:       "USD",
+		CredCardNumber: "1212-1212-1212-1212",
+	}
+
+	paymentRes, err := s.paymentClient.ProcessPayment(ctx, paymentReq)
+	if err != nil {
+		return nil, errors.New("payment service unavailable")
+	}
+
+	if !paymentRes.Success {
+		return nil, errors.New("payment declined: " + paymentRes.Message)
+	}
+
 	tx := s.db.Begin()
 	defer func() {
 		if r := recover(); r != nil {
@@ -37,7 +72,6 @@ func (s *OrderService) Checkout(userID uint) (*models.Order, error) {
 		}
 	}()
 
-	totalCents := 0
 	var orderItems []models.OrderItem
 	for _, item := range cartItems {
 		product, err := s.productRepo.GetProductByIDForUpdate(tx, item.ProductID)
@@ -57,7 +91,6 @@ func (s *OrderService) Checkout(userID uint) (*models.Order, error) {
 			return nil, errors.New("product update failed: " + item.Product.Name)
 		}
 
-		totalCents += product.Price * item.Quantity
 		orderItems = append(orderItems, models.OrderItem{
 			ProductID: product.ID,
 			Quantity:  item.Quantity,

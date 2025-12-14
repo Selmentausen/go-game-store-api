@@ -1,5 +1,5 @@
 .game-gradient {
-    background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
 }
 
 .card-hover:hover {
@@ -9,4 +9,8 @@
 
 .scrollbar-hide::-webkit-scrollbar {
     display: none;
+}
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
 }

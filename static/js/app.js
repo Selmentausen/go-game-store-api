@@ -1,12 +1,13 @@
-const API_URL = '/api/v1'
+const API_URL = '/api/v1';
 let currentCart = [];
 
+// --- Init on Page Load ---
 document.addEventListener('DOMContentLoaded', () => {
     checkAuth();
     loadProducts();
-})
+});
 
-
+// --- Auth Functions ---
 function checkAuth() {
     const token = localStorage.getItem('token');
     const email = localStorage.getItem('email');
@@ -21,6 +22,9 @@ function checkAuth() {
         if (role === 'admin') {
             document.getElementById('admin-btn').classList.remove('hidden');
         }
+
+        // Load the cart count
+        fetchCart();
     } else {
         document.getElementById('guest-nav').classList.remove('hidden');
         document.getElementById('user-nav').classList.add('hidden');
@@ -28,7 +32,6 @@ function checkAuth() {
     }
 }
 
-// --- Auth Functions ---
 async function login() {
     const email = document.getElementById('login-email').value;
     const password = document.getElementById('login-pass').value;
@@ -36,29 +39,23 @@ async function login() {
     try {
         const res = await fetch(`${API_URL}/auth/login`, {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({email, password})
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
         });
 
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
 
-        // Decode JWT simply to get role (in production use a library)
-        // We'll just rely on what we saved, or you can fetch profile
-        // For this demo, let's assume we want to save the token
         localStorage.setItem('token', data.token);
         localStorage.setItem('email', email);
 
-        // Hacky way to check admin without decoding JWT on client:
-        // Try to hit an admin endpoint or just save it from response if you modified the backend
-        // For now, let's just assume if email contains "admin" (simple test) or save manually
-        // Better way: Backend sends role in response body alongside token
-        if (email.includes("admin")) localStorage.setItem('role', 'admin');
+        // Simple role check (in prod, parse the JWT)
+        if(email.includes("admin")) localStorage.setItem('role', 'admin');
         else localStorage.setItem('role', 'user');
 
         showToast("Logged in successfully!", "success");
         checkAuth();
-        window.location.reload(); // Refresh to clean state
+        window.location.reload();
     } catch (err) {
         showToast(err.message, "error");
     }
@@ -70,8 +67,8 @@ async function register() {
     try {
         const res = await fetch(`${API_URL}/auth/register`, {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({email, password})
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
@@ -86,12 +83,7 @@ function logout() {
     window.location.reload();
 }
 
-function toggleAdminPanel() {
-    const panel = document.getElementById('admin-panel');
-    panel.classList.toggle('hidden');
-}
-
-// --- Product Logic ---
+// --- Product Functions ---
 async function loadProducts() {
     try {
         const res = await fetch(`${API_URL}/products`);
@@ -106,31 +98,33 @@ async function loadProducts() {
 
         products.forEach(p => {
             const price = (p.price / 100).toFixed(2);
-            // Random gradients for game covers since we don't have real images
+            // Random gradients for visuals
             const colors = ['from-purple-500 to-indigo-500', 'from-green-500 to-teal-500', 'from-red-500 to-orange-500'];
             const bg = colors[p.ID % colors.length];
 
             const html = `
-                    <div class="bg-gray-800 rounded-xl overflow-hidden shadow-lg card-hover border border-gray-700 flex flex-col">
-                        <div class="h-40 bg-gradient-to-r ${bg} flex items-center justify-center">
-                            <span class="text-4xl">🎮</span>
-                        </div>
-                        <div class="p-5 flex-grow">
-                            <div class="flex justify-between items-start">
-                                <h3 class="text-xl font-bold text-white mb-2">${p.name}</h3>
-                                <span class="bg-gray-700 text-xs px-2 py-1 rounded text-gray-300">Stock: ${p.stock}</span>
-                            </div>
-                            <p class="text-gray-400 text-sm mb-4 line-clamp-2">${p.description || 'No description available.'}</p>
-                            <div class="flex justify-between items-center mt-auto">
-                                <span class="text-2xl font-bold text-green-400">$${price}</span>
-                                <button onclick="buyProduct(${p.ID})" 
-                                    class="${p.stock > 0 ? 'bg-blue-600 hover:bg-blue-500' : 'bg-gray-600 cursor-not-allowed'} text-white px-4 py-2 rounded-lg font-bold transition">
-                                    ${p.stock > 0 ? 'Buy Now' : 'Sold Out'}
-                                </button>
-                            </div>
-                        </div>
+            <div class="bg-gray-800 rounded-xl overflow-hidden shadow-lg card-hover border border-gray-700 flex flex-col">
+                <div class="h-40 bg-gradient-to-r ${bg} flex items-center justify-center">
+                    <span class="text-4xl">🎮</span>
+                </div>
+                <div class="p-5 flex-grow flex flex-col">
+                    <div class="flex justify-between items-start">
+                        <h3 class="text-xl font-bold text-white mb-2">${p.name}</h3>
+                        <span class="bg-gray-700 text-xs px-2 py-1 rounded text-gray-300">Stock: ${p.stock}</span>
                     </div>
-                    `;
+                    <p class="text-gray-400 text-sm mb-4 line-clamp-2">${p.description || 'No description available.'}</p>
+                    <div class="flex justify-between items-center mt-auto">
+                        <span class="text-2xl font-bold text-green-400">$${price}</span>
+                        
+                        <!-- UPDATED BUTTON: Calls addToCart instead of buyProduct -->
+                        <button onclick="addToCart(${p.ID})" 
+                            class="${p.stock > 0 ? 'bg-blue-600 hover:bg-blue-500' : 'bg-gray-600 cursor-not-allowed'} text-white px-4 py-2 rounded-lg font-bold transition">
+                            ${p.stock > 0 ? 'Add to Cart' : 'Sold Out'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+            `;
             container.insertAdjacentHTML('beforeend', html);
         });
     } catch (err) {
@@ -139,9 +133,139 @@ async function loadProducts() {
     }
 }
 
+// --- Cart Logic (The New Part) ---
+
+async function fetchCart() {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+        const res = await fetch(`${API_URL}/cart`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+            currentCart = await res.json();
+            updateCartUI();
+        }
+    } catch (e) { console.error(e); }
+}
+
+async function addToCart(id) {
+    const token = localStorage.getItem('token');
+    if (!token) return showToast("Please login to shop", "error");
+
+    try {
+        const res = await fetch(`${API_URL}/cart`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ product_id: id, quantity: 1 })
+        });
+
+        if (!res.ok) throw new Error((await res.json()).error);
+
+        showToast("Added to Cart", "success");
+        fetchCart(); // Update Badge and UI
+    } catch (err) {
+        showToast(err.message, "error");
+    }
+}
+
+function updateCartUI() {
+    const badge = document.getElementById('cart-badge');
+    const list = document.getElementById('cart-items');
+    const totalEl = document.getElementById('cart-total');
+    const btn = document.getElementById('checkout-btn');
+
+    // Update Badge Count
+    const totalItems = currentCart.reduce((sum, item) => sum + item.quantity, 0);
+    badge.innerText = totalItems;
+    badge.classList.toggle('hidden', totalItems === 0);
+
+    // Calculate Total Price
+    let totalCents = 0;
+
+    // Render List
+    if (currentCart.length === 0) {
+        list.innerHTML = '<div class="text-center text-gray-500 mt-10">Your cart is empty.</div>';
+        btn.disabled = true;
+        totalEl.innerText = "$0.00";
+        return;
+    }
+
+    btn.disabled = false;
+    list.innerHTML = '';
+
+    currentCart.forEach(item => {
+        // Ensure product data exists
+        if(item.product) {
+            totalCents += item.product.price * item.quantity;
+            list.innerHTML += `
+            <div class="flex justify-between items-center bg-gray-700 p-3 rounded-lg border border-gray-600">
+                <div>
+                    <div class="font-bold text-sm text-white">${item.product.name}</div>
+                    <div class="text-xs text-gray-400">$${(item.product.price/100).toFixed(2)} x ${item.quantity}</div>
+                </div>
+                <div class="font-mono font-bold text-green-400">$${(item.product.price * item.quantity / 100).toFixed(2)}</div>
+            </div>`;
+        }
+    });
+
+    totalEl.innerText = "$" + (totalCents/100).toFixed(2);
+}
+
+async function checkout() {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    if(!confirm("Confirm purchase?")) return;
+
+    try {
+        const res = await fetch(`${API_URL}/cart/checkout`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        showToast(`🎉 Success! Order #${data.order_id} placed.`, "success");
+
+        // Refresh everything
+        toggleCart(); // Close modal
+        fetchCart();  // Clear cart UI
+        loadProducts(); // Update stock on main page
+    } catch (err) {
+        showToast(err.message, "error");
+    }
+}
+
+// --- UI Helpers ---
+function toggleCart() {
+    const modal = document.getElementById('cart-modal');
+    const panel = document.getElementById('cart-panel');
+
+    if (modal.classList.contains('hidden')) {
+        modal.classList.remove('hidden');
+        setTimeout(() => panel.classList.remove('translate-x-full'), 10);
+    } else {
+        panel.classList.add('translate-x-full');
+        setTimeout(() => modal.classList.add('hidden'), 300);
+    }
+}
+
+function toggleAdminPanel() {
+    document.getElementById('admin-panel').classList.toggle('hidden');
+}
+
 async function addProduct() {
     const token = localStorage.getItem('token');
-    if (!token) return showToast("You must be logged in!", "error");
+    if (!token) return;
 
     const product = {
         name: document.getElementById('p-name').value,
@@ -161,44 +285,15 @@ async function addProduct() {
             body: JSON.stringify(product)
         });
 
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
+        if (!res.ok) throw new Error((await res.json()).error);
 
         showToast("Product added successfully!", "success");
-        loadProducts(); // Refresh list
+        loadProducts();
     } catch (err) {
         showToast(err.message, "error");
     }
 }
 
-async function buyProduct(id) {
-    const token = localStorage.getItem('token');
-    if (!token) {
-        showToast("Please login to purchase games", "error");
-        return;
-    }
-
-    try {
-        const res = await fetch(`${API_URL}/orders`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({product_id: id})
-        });
-
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
-
-        showToast("🎉 " + data.message, "success");
-        loadProducts(); // Refresh to show reduced stock
-    } catch (err) {
-        showToast(err.message, "error");
-    }
-}
-
-// --- Helper: Toast Notification ---
 function showToast(message, type = "success") {
     const container = document.getElementById('toast-container');
     const toast = document.createElement('div');
@@ -209,12 +304,20 @@ function showToast(message, type = "success") {
 
     container.appendChild(toast);
 
-    // Animate in
     setTimeout(() => toast.classList.remove('translate-y-10', 'opacity-0'), 10);
 
-    // Remove after 3 seconds
     setTimeout(() => {
         toast.classList.add('translate-y-10', 'opacity-0');
         setTimeout(() => toast.remove(), 300);
     }, 3000);
 }
+
+// Global scope attachments for HTML onClick events
+window.login = login;
+window.register = register;
+window.logout = logout;
+window.addToCart = addToCart; // Matches html: onclick="addToCart(...)"
+window.checkout = checkout;
+window.toggleCart = toggleCart;
+window.toggleAdminPanel = toggleAdminPanel;
+window.addProduct = addProduct;
