@@ -12,6 +12,7 @@ import (
 	"time"
 
 	pb "game-store-api/internal/grpc/payment"
+
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/redis/go-redis/v9"
@@ -79,8 +80,12 @@ func main() {
 		go worker.StartEmailWorker(redisClient)
 	}
 
-	// Connect
-	paymentConn, err := grpc.NewClient("127.0.0.1:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	// Connect to payment service
+	paymentSvcAddr := os.Getenv("PAYMENT_SERVICE_ADDR")
+	if paymentSvcAddr == "" {
+		paymentSvcAddr = "127.0.0.1:50051"
+	}
+	paymentConn, err := grpc.NewClient(paymentSvcAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatal("Failed to connect to payment service:", err)
 	}
