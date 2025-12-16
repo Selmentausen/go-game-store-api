@@ -1,109 +1,80 @@
 # 🎮 Gopher Game Store API
 
-A production-ready E-Commerce Backend built with **Go (Golang)**, featuring Clean Architecture, ACID transactions, and asynchronous processing. Includes a responsive Frontend for demonstration.
+A production-ready E-Commerce System built with **Go (Golang)**, featuring Microservices (gRPC), Clean Architecture, and a responsive Frontend.
 
-![Go](https://img.shields.io/badge/Go-1.23-blue) ![Architecture](https://img.shields.io/badge/Architecture-Clean-green) ![Docker](https://img.shields.io/badge/Docker-Enabled-blue) ![Redis](https://img.shields.io/badge/Redis-Async-red)
+![Go](https://img.shields.io/badge/Go-1.25-blue) ![Architecture](https://img.shields.io/badge/Architecture-Clean%20%2B%20Microservices-green) ![Docker](https://img.shields.io/badge/Docker-Enabled-blue)
 
-## 🏗 Architecture & Design Patterns
+## 🏗 Architecture
+This project demonstrates a transition from a Monolith to a **Microservices** architecture.
 
-*   **Internal Layering:** Logic is strictly separated into `Handlers` (HTTP), `Services` (Business Logic), and `Repositories` (Data Access).
-*   **Dependency Injection:** All layers are injected via constructors in `main.go`, making the system loosely coupled and highly testable.
-*   **Atomic Transactions:** The Checkout process uses database transactions to ensure Inventory and Orders stay consistent even during failures.
-*   **Concurrency:** Heavy tasks (Email simulation) are offloaded to **Redis** and processed by background **Goroutines**.
-*   **Structured Logging:** Uses Go's `log/slog` for JSON-formatted production logs.
+*   **Game Store API (REST):** The main entry point. Handles Users, Products, and Cart logic.
+*   **Payment Service (gRPC):** A separate, isolated service that processes payments. The API talks to this service via Protocol Buffers.
+*   **Database:** PostgreSQL (Relation data) and Redis (Async Job Queue).
+*   **Pattern:** Logic is strictly separated into `Handlers`, `Services`, and `Repositories`.
 
 ## 🚀 Tech Stack
 *   **Language:** Go (Golang)
-*   **Web Framework:** Gin
-*   **Database:** PostgreSQL 16 (Managed via GORM)
-*   **Caching/Queue:** Redis
-*   **Frontend:** HTML5, Vanilla JS, Tailwind CSS
-*   **Testing:** SQLite (In-Memory)
-*   **Containerization:** Docker & Docker Compose
+*   **Communication:** REST (Gin) & gRPC (Protobuf)
+*   **Database:** PostgreSQL 16 & Redis
+*   **Frontend:** Vanilla JS + Tailwind CSS (SPA)
+*   **Testing:** SQLite (In-Memory) & Testify
+*   **Orchestration:** Docker Compose
 
 ## 📂 Project Structure
 ```text
 /cmd
-  /api           # Application Entry Point (Composition Root)
-  /seeder        # Data Population Scripts
+  /api           # Main REST API Server
+  /seeder        # Data population tool
 /internal
-  /models        # Domain Entities
-  /handlers      # HTTP Transport Layer
-  /service       # Business Logic Layer
-  /repository    # Database Access Layer
-  /worker        # Background Job Processors
-  /middleware    # JWT Auth & RBAC
+  /handlers      # HTTP Controllers
+  /service       # Business Logic
+  /repository    # Data Access (GORM)
+  /grpc          # Generated Protobuf code
+/payment-service # Microservice
+  /cmd/server    # gRPC Server Entry
+  /proto         # Protocol Buffer Definitions
 /static          # Frontend Assets
 ```
 
-## 🛠 Installation & Setup
+## 🛠 Installation & Usage
 
-### Prerequisites
-*   Go 1.21+
-*   Docker Desktop
-
-### 1. Start Infrastructure
-Spin up PostgreSQL and Redis containers.
+### 1. Run with Docker Compose (Recommended)
+This command spins up the API, Payment Service, Postgres, and Redis in a private network.
 ```bash
-docker-compose up -d
+docker-compose up --build
 ```
+*   **Frontend:** Visit `http://localhost:8080`
+*   **API:** `http://localhost:8080/api/v1/...`
 
 ### 2. Seed the Database
-Populates the database with demo products and users.
+Populate the store with dummy data (must run against the exposed Docker ports).
 ```bash
 go run cmd/seeder/main.go
 ```
-*   **Admin:** `admin@gamestore.com` / `password123`
-*   **User:** `player1@test.com` / `password123`
+*   **Admin Login:** `admin@gamestore.com` / `password123`
+*   **User Login:** `player1@test.com` / `password123`
 
-### 3. Run the Server
-```bash
-go run cmd/api/main.go
-```
-The server will start on **http://localhost:8080**.
+## 🛒 Features Implemented
 
-## 🛒 Features
+### Microservice Payments
+*   When `Checkout` is triggered, the Order Service creates a gRPC connection to the Payment Service.
+*   The Payment Service validates limits and returns a transaction ID.
+*   The Order is only saved if the gRPC call returns `Success: true`.
 
-### 1. Shopping Cart & Checkout
-*   Full cart management (Add, Remove, View).
-*   **Transactional Checkout:** `internal/service/order_service.go` performs a complex transaction:
-    1.  Locks product rows (`FOR UPDATE`) to prevent race conditions.
-    2.  Checks stock levels.
-    3.  Deducts stock.
-    4.  Creates Order header and Order Items.
-    5.  Clears Cart.
-    6.  Commits transaction only if ALL steps succeed.
-
-### 2. Authentication & RBAC
-*   **JWT** based stateless authentication.
-*   **Middleware** protection for routes (`AuthMiddleware`).
-*   **Role-Based Access Control:** Only Admins can add products (`AdminOnly` middleware).
-
-### 3. Asynchronous Workers
-*   Registration triggers a "Welcome Email" task.
-*   The API pushes this task to a **Redis List** (Queue).
-*   A background worker (`internal/worker`) consumes the task and simulates sending an email without blocking the HTTP response.
-
-### 4. Frontend
-*   A responsive Single Page Application (SPA) located at `/static`.
-*   Uses **Fetch API** to communicate with the Go backend.
-*   Includes dynamic Cart UI, Toast notifications, and Admin Dashboard.
-
-## 🧪 Testing
-Unit and Integration tests run against an **In-Memory SQLite** database to mock PostgreSQL, ensuring fast and isolated execution.
-
-```bash
-go test ./internal/handlers -v
-```
+### 3. Concurrency & Async
+*   **Job Queue:** Registration triggers a "Welcome Email" task pushed to Redis.
+*   **Worker Pool:** A background goroutine consumes tasks from Redis to prevent blocking the API.
 
 ## 🔑 API Endpoints
 
-| Method | Endpoint | Description | Auth |
-| :--- | :--- | :--- | :--- |
-| POST | `/api/v1/auth/register` | Create account | No |
-| POST | `/api/v1/auth/login` | Get JWT Token | No |
-| GET | `/api/v1/products` | List Inventory | No |
-| POST | `/api/v1/products` | Add Product | **Admin** |
-| GET | `/api/v1/cart` | View Cart | **User** |
-| POST | `/api/v1/cart` | Add Item to Cart | **User** |
-| POST | `/api/v1/cart/checkout` | Process Order | **User** |
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| **Auth** | | |
+| POST | `/api/v1/auth/login` | Get JWT Token |
+| **Cart** | | |
+| GET | `/api/v1/cart` | View Cart |
+| POST | `/api/v1/cart` | Add/Update Item (qty: 1 or -1) |
+| DELETE | `/api/v1/cart/:id` | Remove Item completely |
+| POST | `/api/v1/cart/checkout` | Process Payment & Order |
+| **Products** | | |
+| GET | `/api/v1/products` | List Inventory |

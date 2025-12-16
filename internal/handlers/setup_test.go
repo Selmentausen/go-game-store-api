@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"context"
+	pb "game-store-api/internal/grpc/payment"
 	"game-store-api/internal/middleware"
 	"game-store-api/internal/models"
 	"game-store-api/internal/repository"
@@ -11,8 +13,19 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/glebarez/sqlite"
 	"github.com/golang-jwt/jwt/v5"
+	"google.golang.org/grpc"
 	"gorm.io/gorm"
 )
+
+type MockPaymentClient struct{}
+
+func (m *MockPaymentClient) ProcessPayment(ctx context.Context, in *pb.PaymentRequest, opts ...grpc.CallOption) (*pb.PaymentResponse, error) {
+	return &pb.PaymentResponse{
+		Success:       true,
+		TransactionId: "TEST_TXN_123",
+		Message:       "Payment processed via Mock",
+	}, nil
+}
 
 type TestDeps struct {
 	DB             *gorm.DB
@@ -36,10 +49,12 @@ func SetupTestDependencies() TestDeps {
 	orderRepo := repository.NewOrderRepository(db)
 	cartRepo := repository.NewCartRepository(db)
 
+	mockPayment := &MockPaymentClient{}
+
 	authService := service.NewAuthService(userRepo, nil)
 	productService := service.NewProductService(productRepo)
 	cartService := service.NewCartService(cartRepo, productRepo)
-	orderService := service.NewOrderService(orderRepo, productRepo, cartRepo, db)
+	orderService := service.NewOrderService(orderRepo, productRepo, cartRepo, mockPayment, db)
 
 	return TestDeps{
 		DB:             db,
@@ -65,6 +80,8 @@ func SetupRouter(deps TestDeps) *gin.Engine {
 
 			protected.GET("/cart", deps.CartHandler.GetCart)
 			protected.POST("/cart", deps.CartHandler.AddToCart)
+			protected.DELETE("/cart/:product_id", deps.CartHandler.RemoveFromCart)
+
 			protected.POST("/cart/checkout", deps.OrderHandler.Checkout)
 		}
 	}
