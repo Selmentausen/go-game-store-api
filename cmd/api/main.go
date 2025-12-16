@@ -130,6 +130,7 @@ func main() {
 
 			protected.GET("/cart", cartHandler.GetCart)
 			protected.POST("/cart", cartHandler.AddToCart)
+			protected.DELETE("/cart/:product_id", cartHandler.RemoveFromCart)
 
 			protected.POST("/cart/checkout", orderHandler.Checkout)
 		}

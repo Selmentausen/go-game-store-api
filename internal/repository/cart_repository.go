@@ -27,7 +27,13 @@ func (r *cartRepository) AddItem(item *models.CartItem) error {
 	err := r.db.Where("user_id = ? AND product_id = ?", item.UserID, item.ProductID).First(&existingItem).Error
 	if err == nil {
 		existingItem.Quantity += item.Quantity
+		if existingItem.Quantity <= 0 {
+			return r.db.Delete(&existingItem).Error
+		}
 		return r.db.Save(&existingItem).Error
+	}
+	if item.Quantity <= 0 {
+		return nil
 	}
 	return r.db.Create(item).Error
 }
@@ -39,7 +45,12 @@ func (r *cartRepository) GetCartByUserID(userID uint) ([]models.CartItem, error)
 }
 
 func (r *cartRepository) RemoveItem(userID, productID uint) error {
-	return r.db.Where("user_id = ? AND product_id = ?", userID, productID).Delete(&models.CartItem{}).Error
+	var existingItem models.CartItem
+	err := r.db.Where("user_id = ? AND product_id = ?", userID, productID).First(&existingItem).Error
+	if err != nil {
+		return err
+	}
+	return r.db.Delete(&existingItem).Error
 }
 
 func (r *cartRepository) ClearCart(tx *gorm.DB, userID uint) error {

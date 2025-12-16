@@ -3,6 +3,7 @@ package handlers
 import (
 	"game-store-api/internal/service"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -17,8 +18,8 @@ func NewCartHandler(service *service.CartService) *CartHandler {
 
 func (h *CartHandler) AddToCart(c *gin.Context) {
 	var input struct {
-		ProductID uint `json:"product_id"`
-		Quantity  int  `json:"quantity"`
+		ProductID uint `json:"product_id" binding:"required"`
+		Quantity  int  `json:"quantity" binding:"required"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -44,4 +45,21 @@ func (h *CartHandler) GetCart(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, items)
+}
+
+func (h *CartHandler) RemoveFromCart(c *gin.Context) {
+	productIDStr := c.Param("product_id")
+	productID, err := strconv.ParseUint(productIDStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid product ID"})
+		return
+	}
+
+	userID := c.MustGet("userID").(uint)
+	if err := h.service.RemoveItem(userID, uint(productID)); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to remove item"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Item removed"})
 }

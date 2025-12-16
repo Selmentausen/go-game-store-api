@@ -203,12 +203,25 @@ function updateCartUI() {
         if(item.product) {
             totalCents += item.product.price * item.quantity;
             list.innerHTML += `
-            <div class="flex justify-between items-center bg-gray-700 p-3 rounded-lg border border-gray-600">
-                <div>
+            <div class="flex justify-between items-center bg-gray-700 p-3 rounded-lg border border-gray-600 transition hover:bg-gray-600">
+                <div class="flex-grow">
                     <div class="font-bold text-sm text-white">${item.product.name}</div>
-                    <div class="text-xs text-gray-400">$${(item.product.price/100).toFixed(2)} x ${item.quantity}</div>
+                    <div class="text-xs text-gray-400">$${(item.product.price/100).toFixed(2)} each</div>
                 </div>
-                <div class="font-mono font-bold text-green-400">$${(item.product.price * item.quantity / 100).toFixed(2)}</div>
+                
+                <div class="flex items-center gap-3">
+                    <!-- QUANTITY CONTROLS -->
+                    <div class="flex items-center bg-gray-800 rounded">
+                        <button onclick="window.changeQuantity(${item.product_id}, -1)" class="px-2 py-1 text-gray-300 hover:text-white hover:bg-gray-600 rounded-l">-</button>
+                        <span class="px-2 text-sm font-mono">${item.quantity}</span>
+                        <button onclick="window.changeQuantity(${item.product_id}, 1)" class="px-2 py-1 text-gray-300 hover:text-white hover:bg-gray-600 rounded-r">+</button>
+                    </div>
+
+                    <span class="font-mono font-bold text-green-400 w-16 text-right">$${(item.product.price * item.quantity / 100).toFixed(2)}</span>
+                    
+                    <!-- Full Remove (Trash) -->
+                    <button onclick="window.removeFromCart(${item.product_id})" class="text-red-400 hover:text-red-200 p-1">✕</button>
+                </div>
             </div>`;
         }
     });
@@ -294,6 +307,46 @@ async function addProduct() {
     }
 }
 
+async function removeFromCart(productID) {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+        const res = await fetch(`${API_URL}/cart/${productID}`, {
+            method: 'DELETE',
+            headers: {
+                "Authorization": `Bearer ${token}`
+            }
+        });
+        if (!res.ok) throw new Error("Failed to remove item");
+
+        fetchCart();
+        showToast("Item removed", "success");
+    } catch (err) {
+        showToast(err.message, "error");
+    }
+}
+
+async function changeQuantity(productID, delta) {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+        const res = await fetch(`${API_URL}/cart/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ product_id: productID, quantity: delta }),
+        });
+        if (!res.ok) throw new Error((await res.json()).error);
+        fetchCart();
+    } catch (err) {
+        showToast(err.message, "error");
+    }
+}
+
 function showToast(message, type = "success") {
     const container = document.getElementById('toast-container');
     const toast = document.createElement('div');
@@ -316,8 +369,10 @@ function showToast(message, type = "success") {
 window.login = login;
 window.register = register;
 window.logout = logout;
-window.addToCart = addToCart; // Matches html: onclick="addToCart(...)"
+window.addToCart = addToCart;
 window.checkout = checkout;
 window.toggleCart = toggleCart;
 window.toggleAdminPanel = toggleAdminPanel;
 window.addProduct = addProduct;
+window.removeFromCart = removeFromCart;
+window.changeQuantity = changeQuantity;
