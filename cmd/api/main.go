@@ -121,7 +121,8 @@ func main() {
 		v1.POST("/auth/register", authHandler.Register)
 		v1.POST("/auth/login", authHandler.Login)
 
-		v1.GET("/products", productHandler.GetProducts)
+		v1.GET("/products", productHandler.GetAllProducts)
+		v1.GET("/products/:product_id", productHandler.GetProduct)
 
 		protected := v1.Group("/")
 		protected.Use(middleware.AuthMiddleware())

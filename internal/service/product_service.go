@@ -27,3 +27,7 @@ func (s ProductService) CreateProduct(name, description, sku string, price, stoc
 func (s *ProductService) GetAllProducts() ([]models.Product, error) {
 	return s.productRepo.GetAllProducts()
 }
+
+func (s *ProductService) GetProductByID(id uint) (*models.Product, error) {
+	return s.productRepo.GetProductByID(id)
+}

@@ -5,6 +5,15 @@ let currentCart = [];
 document.addEventListener('DOMContentLoaded', () => {
     checkAuth();
     loadProducts();
+
+    const modal = document.getElementById('product-modal');
+    modal.addEventListener('click', (e) => {
+        const card = modal.querySelector('.inline-block');
+        if (card && card.contains(e.target)) {
+            return;
+        }
+        closeProductModal();
+    })
 });
 
 // --- Auth Functions ---
@@ -39,8 +48,8 @@ async function login() {
     try {
         const res = await fetch(`${API_URL}/auth/login`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({email, password})
         });
 
         const data = await res.json();
@@ -50,7 +59,7 @@ async function login() {
         localStorage.setItem('email', email);
 
         // Simple role check (in prod, parse the JWT)
-        if(email.includes("admin")) localStorage.setItem('role', 'admin');
+        if (email.includes("admin")) localStorage.setItem('role', 'admin');
         else localStorage.setItem('role', 'user');
 
         showToast("Logged in successfully!", "success");
@@ -67,8 +76,8 @@ async function register() {
     try {
         const res = await fetch(`${API_URL}/auth/register`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({email, password})
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
@@ -103,28 +112,28 @@ async function loadProducts() {
             const bg = colors[p.ID % colors.length];
 
             const html = `
-            <div class="bg-gray-800 rounded-xl overflow-hidden shadow-lg card-hover border border-gray-700 flex flex-col">
-                <div class="h-40 bg-gradient-to-r ${bg} flex items-center justify-center">
-                    <span class="text-4xl">🎮</span>
-                </div>
-                <div class="p-5 flex-grow flex flex-col">
-                    <div class="flex justify-between items-start">
-                        <h3 class="text-xl font-bold text-white mb-2">${p.name}</h3>
-                        <span class="bg-gray-700 text-xs px-2 py-1 rounded text-gray-300">Stock: ${p.stock}</span>
+            <div class="bg-gray-800 rounded-xl overflow-hidden shadow-lg card-hover border border-gray-700 flex flex-col group relative">
+                <!-- Clickable Area for Details -->
+                <div class="cursor-pointer" onclick="window.openProduct(${p.ID})">
+                    <div class="h-48 bg-gradient-to-br ${bg} flex items-center justify-center relative overflow-hidden">
+                        <span class="text-6xl transform group-hover:scale-110 transition duration-500">🎮</span>
+                        <div class="absolute bottom-2 right-2 bg-black bg-opacity-50 px-2 py-1 rounded text-xs text-gray-300">Stock: ${p.stock}</div>
                     </div>
-                    <p class="text-gray-400 text-sm mb-4 line-clamp-2">${p.description || 'No description available.'}</p>
-                    <div class="flex justify-between items-center mt-auto">
-                        <span class="text-2xl font-bold text-green-400">$${price}</span>
-                        
-                        <!-- UPDATED BUTTON: Calls addToCart instead of buyProduct -->
-                        <button onclick="addToCart(${p.ID})" 
-                            class="${p.stock > 0 ? 'bg-blue-600 hover:bg-blue-500' : 'bg-gray-600 cursor-not-allowed'} text-white px-4 py-2 rounded-lg font-bold transition">
-                            ${p.stock > 0 ? 'Add to Cart' : 'Sold Out'}
-                        </button>
+                    <div class="p-5 pb-0">
+                        <h3 class="text-xl font-bold text-white mb-1 hover:text-blue-400 transition">${p.name}</h3>
+                        <p class="text-gray-400 text-sm line-clamp-2">${p.description || 'Awesome gameplay awaits.'}</p>
                     </div>
                 </div>
-            </div>
-            `;
+
+                <!-- Footer (Buttons) -->
+                <div class="p-5 mt-auto flex justify-between items-center pt-4">
+                    <span class="text-2xl font-bold text-green-400">$${price}</span>
+                    <button onclick="addToCart(${p.ID})" 
+                        class="${p.stock > 0 ? 'bg-blue-600 hover:bg-blue-500' : 'bg-gray-600 cursor-not-allowed'} text-white px-4 py-2 rounded-lg font-bold transition shadow-md z-10">
+                        ${p.stock > 0 ? 'Add' : 'Sold Out'}
+                    </button>
+                </div>
+            </div>`;
             container.insertAdjacentHTML('beforeend', html);
         });
     } catch (err) {
@@ -141,13 +150,15 @@ async function fetchCart() {
 
     try {
         const res = await fetch(`${API_URL}/cart`, {
-            headers: { 'Authorization': `Bearer ${token}` }
+            headers: {'Authorization': `Bearer ${token}`}
         });
         if (res.ok) {
             currentCart = await res.json();
             updateCartUI();
         }
-    } catch (e) { console.error(e); }
+    } catch (e) {
+        console.error(e);
+    }
 }
 
 async function addToCart(id) {
@@ -161,7 +172,7 @@ async function addToCart(id) {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify({ product_id: id, quantity: 1 })
+            body: JSON.stringify({product_id: id, quantity: 1})
         });
 
         if (!res.ok) throw new Error((await res.json()).error);
@@ -200,13 +211,13 @@ function updateCartUI() {
 
     currentCart.forEach(item => {
         // Ensure product data exists
-        if(item.product) {
+        if (item.product) {
             totalCents += item.product.price * item.quantity;
             list.innerHTML += `
             <div class="flex justify-between items-center bg-gray-700 p-3 rounded-lg border border-gray-600 transition hover:bg-gray-600">
                 <div class="flex-grow">
                     <div class="font-bold text-sm text-white">${item.product.name}</div>
-                    <div class="text-xs text-gray-400">$${(item.product.price/100).toFixed(2)} each</div>
+                    <div class="text-xs text-gray-400">$${(item.product.price / 100).toFixed(2)} each</div>
                 </div>
                 
                 <div class="flex items-center gap-3">
@@ -226,14 +237,14 @@ function updateCartUI() {
         }
     });
 
-    totalEl.innerText = "$" + (totalCents/100).toFixed(2);
+    totalEl.innerText = "$" + (totalCents / 100).toFixed(2);
 }
 
 async function checkout() {
     const token = localStorage.getItem('token');
     if (!token) return;
 
-    if(!confirm("Confirm purchase?")) return;
+    if (!confirm("Confirm purchase?")) return;
 
     try {
         const res = await fetch(`${API_URL}/cart/checkout`, {
@@ -338,7 +349,7 @@ async function changeQuantity(productID, delta) {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify({ product_id: productID, quantity: delta }),
+            body: JSON.stringify({product_id: productID, quantity: delta}),
         });
         if (!res.ok) throw new Error((await res.json()).error);
         fetchCart();
@@ -365,6 +376,54 @@ function showToast(message, type = "success") {
     }, 3000);
 }
 
+async function openProduct(id) {
+    try {
+        const res = await fetch(`${API_URL}/products/${id}`);
+        if (!res.ok) throw new Error("Failed to load product");
+        const p = await res.json();
+
+        // Populate Data
+        document.getElementById('modal-title').innerText = p.name;
+        document.getElementById('modal-desc').innerText = p.description;
+        document.getElementById('modal-stock').innerText = `Stock: ${p.stock}`;
+        document.getElementById('modal-sku').innerText = `SKU: ${p.sku}`;
+        document.getElementById('modal-price').innerText = `$${(p.price / 100).toFixed(2)}`;
+
+        // Update Button Logic
+        const btn = document.getElementById('modal-add-btn');
+        btn.onclick = () => addToCart(p.ID); // Reuse existing cart logic
+
+        if (p.stock > 0) {
+            btn.disabled = false;
+            btn.innerText = "Add to Cart";
+            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+        } else {
+            btn.disabled = true;
+            btn.innerText = "Sold Out";
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+
+        // Random Gradient (Same as list, or stored)
+        const colors = ['from-purple-600 to-blue-600', 'from-emerald-500 to-teal-600', 'from-rose-500 to-orange-600'];
+        const bgClass = colors[p.ID % colors.length];
+        const gradientEl = document.getElementById('modal-gradient');
+        // Reset classes
+        gradientEl.className = `h-64 md:h-auto bg-gradient-to-br ${bgClass} flex items-center justify-center`;
+
+        // Show Modal
+        document.getElementById('product-modal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+
+    } catch (err) {
+        showToast(err.message, "error");
+    }
+}
+
+function closeProductModal() {
+    document.getElementById('product-modal').classList.add('hidden');
+    document.body.style.overflow = 'auto';
+}
+
 // Global scope attachments for HTML onClick events
 window.login = login;
 window.register = register;
@@ -376,3 +435,5 @@ window.toggleAdminPanel = toggleAdminPanel;
 window.addProduct = addProduct;
 window.removeFromCart = removeFromCart;
 window.changeQuantity = changeQuantity;
+window.openProduct = openProduct;
+window.closeProductModal = closeProductModal;
