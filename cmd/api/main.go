@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -92,6 +93,29 @@ func main() {
 	defer paymentConn.Close()
 
 	paymentClient := pb.NewPaymentServiceClient(paymentConn)
+	slog.Info("Attempting to connect to Payment Service...")
+	connected := false
+	for i := 0; i < 30; i++ {
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		_, err := paymentClient.ProcessPayment(ctx, &pb.PaymentRequest{
+			OrderId: -1,
+		})
+		cancel()
+
+		if err == nil || (err != nil && !isConnectionError(err)) {
+			slog.Info("Payment Service is READY!")
+			connected = true
+			break
+		}
+
+		slog.Warn("Waiting for Payment Service...", "attempt", i+1)
+		time.Sleep(1 * time.Second)
+	}
+
+	if !connected {
+		slog.Error("Could not connect to Payment Service after 30s. Exiting.")
+		os.Exit(1)
+	}
 
 	// Dependency injection
 	userRepo := repository.NewUserRepository(db)
@@ -163,4 +187,11 @@ func main() {
 		slog.Error("Server forced to shutdown", "error", err)
 	}
 	slog.Info("Server exited properly")
+}
+
+func isConnectionError(err error) bool {
+	msg := err.Error()
+	return strings.Contains(msg, "unavailable") ||
+		strings.Contains(msg, "deadline exceeded") ||
+		strings.Contains(msg, "connection refused")
 }
